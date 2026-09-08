@@ -1,6 +1,8 @@
 import { PrismaClient, WorkOrderCategory, WorkOrderPriority, WorkOrderStatus } from '@prisma/client';
 import { logger } from '../utils/logger';
 import { bedrockService } from './bedrock.service';
+import { plaidService } from './plaid.service';
+import { modernTreasuryService } from './modernTreasury.service';
 
 const prisma = new PrismaClient();
 
@@ -118,12 +120,12 @@ export class AgentService {
       },
       {
         id: 'screening-officer',
-        name: 'FHA Screening Officer',
+        name: 'Plaid Underwriting & FHA Screening Officer',
         emoji: '📋',
         model: 'Claude 3.5 Sonnet (Amazon Bedrock)',
         status: 'online',
-        autonomy: 90,
-        description: 'Conducts FHA-compliant individual criminal assessments and processes screening requests',
+        autonomy: 95,
+        description: 'Underwrites prospects via Plaid Identity, Payroll Income, Assets, Liabilities (DTI), and executes FHA-compliant background checks',
       },
       {
         id: 'tax-auditor',
@@ -154,12 +156,12 @@ export class AgentService {
       },
       {
         id: 'treasury-agent',
-        name: 'Commission Splitter & Treasury Agent',
+        name: 'Modern Treasury & Trust Ledger Agent',
         emoji: '🏦',
         model: 'Claude 3.5 Sonnet (Amazon Bedrock)',
         status: 'online',
         autonomy: 100,
-        description: 'Automatically processes Stripe ACH split payments, routing 10% platform commissions and 90% owner disbursements',
+        description: 'Orchestrates Plaid Signal risk underwriting, Modern Treasury ACH rent debits, instant RTP owner distributions, virtual accounts, and double-entry trust ledgers',
       },
       {
         id: 'inventory-auditor',
@@ -172,12 +174,12 @@ export class AgentService {
       },
       {
         id: 'ach-monitor',
-        name: 'ACH Settlement & Plaid Monitor',
+        name: 'Plaid Balance & NACHA Return Monitor',
         emoji: '💳',
         model: 'Claude 3 Haiku (Amazon Bedrock)',
         status: 'online',
-        autonomy: 95,
-        description: 'Monitors Plaid instant authentication status and tracks USA standard ACH transaction cycles',
+        autonomy: 98,
+        description: 'Audits real-time Plaid pre-debit balances, tracks ACH clearing rails, and executes automated remediation for NACHA R01-R07 returns',
       },
     ];
   }
@@ -400,7 +402,9 @@ export class AgentService {
           where: { status: 'SUBMITTED' },
           include: { lead: true, screeningResults: true },
         });
-        domainContext = `Pending applications context:\n${JSON.stringify(pendingApps, null, 2)}`;
+        const liabilities = await plaidService.getLiabilities('access-sandbox-mock');
+        const payroll = await plaidService.getPayrollIncome('access-sandbox-mock');
+        domainContext = `Pending applications & Plaid underwriting context:\n${JSON.stringify({ pendingApps, liabilities, payroll }, null, 2)}`;
       } else if (agentId === 'tax-auditor') {
         const assets = await prisma.property.findMany({
           where: { companyId },
@@ -420,12 +424,9 @@ export class AgentService {
         });
         domainContext = `Smart home units status context:\n${JSON.stringify(smartUnits, null, 2)}`;
       } else if (agentId === 'treasury-agent') {
-        const txs = await prisma.transaction.findMany({
-          where: { companyId, category: 'MANAGEMENT_FEE' },
-          take: 10,
-          orderBy: { date: 'desc' },
-        });
-        domainContext = `Platform 10% commission fees transaction logs:\n${JSON.stringify(txs, null, 2)}`;
+        const internalAccounts = await modernTreasuryService.listInternalAccounts();
+        const paymentOrders = await modernTreasuryService.listPaymentOrders();
+        domainContext = `Modern Treasury accounts and payment orders context:\n${JSON.stringify({ internalAccounts, paymentOrders }, null, 2)}`;
       } else if (agentId === 'inventory-auditor') {
         const inspections = await prisma.inspection.findMany({
           where: { property: { companyId } },
@@ -434,12 +435,9 @@ export class AgentService {
         });
         domainContext = `Move-in/out inspections inventory checklists:\n${JSON.stringify(inspections, null, 2)}`;
       } else if (agentId === 'ach-monitor') {
-        const payments = await prisma.payment.findMany({
-          where: { transaction: { companyId } },
-          take: 10,
-          orderBy: { createdAt: 'desc' },
-        });
-        domainContext = `ACH payment settlements status logs:\n${JSON.stringify(payments, null, 2)}`;
+        const signal = await plaidService.evaluateSignal('access-sandbox-mock', 'act_demo_01', 2850);
+        const returns = await modernTreasuryService.listReturns();
+        domainContext = `Plaid Signal risk score & Modern Treasury NACHA returns context:\n${JSON.stringify({ signal, returns }, null, 2)}`;
       }
     } catch (err) {
       logger.warn(`Prisma queries failed for agentId=${agentId} context collection, using fallback mock context`, err);
@@ -818,83 +816,48 @@ Portfolio-wide MTR pricing recommendations have been updated on the Owner Opport
         return `Hello! I am your Dynamic Pricing Engine agent. I analyze submarket occupancy, match seasonal demand trends, and set dynamically optimized month-by-month premiums for furnished rentals.`;
 
       case 'screening-officer':
-        if (lowerMsg.includes('criminal') || lowerMsg.includes('individual') || lowerMsg.includes('fha')) {
-          return `I have performed a compliance review on criminal records for pending applicants:
-- **Application App-209**: Criminal database match detected in county records. 
-- **Action Taken**: Bypassed automated denial to run FHA individual assessment. I evaluated the offense date (2021) and the nature of the infraction. Recommending approval with conditional deposit premium, complying with HUD/FHA fair housing guidelines.
-- **Status**: Ready for final manager sign-off.`;
+        if (lowerMsg.includes('criminal') || lowerMsg.includes('individual') || lowerMsg.includes('fha') || lowerMsg.includes('plaid') || lowerMsg.includes('income') || lowerMsg.includes('dti') || lowerMsg.includes('underwrit')) {
+          return `### Plaid Underwriting & FHA Screening Report (Bedrock AI)
+- **Application #APP-2026-4B (Michael Meram)**:
+  - **Plaid Identity & Auth**: Legal name, address, and primary checking account (*...0000) verified with 99.4% confidence.
+  - **Plaid Payroll Income**: Verified employer *Databricks Inc* via digital payroll stream. Gross annual income: **$162,500.00**.
+  - **Plaid Liabilities & DTI**: Monthly debt obligations ($275.00 student loans & credit card min). Calculated Debt-to-Income (DTI) ratio is **21.4%** (Well below 40% threshold).
+  - **Plaid Assets**: Average 90-day balance of **$14,850.50** (5.2x monthly rent requirement).
+  - **FHA Criminal Assessment**: HUD Fair Housing individual assessment complete. Zero disqualifying felony records within 7 years.
+- **Underwriting Decision**: **PRE-APPROVED (TIER 1 LOW RISK)**. Ready for lease execution and Modern Treasury virtual account assignment.`;
         }
-        return `Hello! I am the FHA Screening Officer agent. I run automated background screening, audit eviction logs, and perform FHA-compliant individual criminal record assessments. Let me know if you need to review a pending screening.`;
-
-      case 'tax-auditor':
-        if (lowerMsg.includes('depreciation') || lowerMsg.includes('schedule') || lowerMsg.includes('tax') || lowerMsg.includes('appeal')) {
-          return `I have compiled the tax and depreciation audit for your portfolio:
-1. **Furniture Depreciation**: Logged $45,000 in furnished assets across 3 properties. MACRS 7-year depreciation applied, yielding a projected tax deduction of **$6,428** for this tax year.
-2. **ATTOM Tax Appeal Audit**: 
-   - *Park View Residences*: Current assessed value is $4.5M. ATTOM AVM indicates true market value is $4.1M. Appeal opportunity detected! Saving estimate: **$4,800/yr**.
-   - I have drafted the tax assessment appeal petition.
-
-Schedule E preparation is complete and ready for export under Tax Center.`;
-        }
-        return `Hello! I am your Tax & Depreciation Auditor agent. I audit furniture depreciation logs, evaluate tax assessment appeals using ATTOM data, and organize Schedule E tax compliance files.`;
-
-      case 'risk-underwriter':
-        if (lowerMsg.includes('insurance') || lowerMsg.includes('hazard') || lowerMsg.includes('risk') || lowerMsg.includes('fire') || lowerMsg.includes('flood')) {
-          return `I have audited your portfolio risk profiles using ATTOM natural hazard indices:
-- **Oak Terrace Apartments**: Flood Risk Score: 1/10 (Low), Wildfire Risk Score: 3/10 (Low). Insurance COI verified active.
-- **Elm Street Townhomes**: Storm Risk Score: 6/10 (Moderate). Insurance policy verified with adequate furnished replacement limits ($100,000 contents limit).
-- **Renter Insurance Compliance**: 94% of active tenants have submitted verified renter insurance policies. I have sent auto-notifications to 1 outstanding unit.
-
-All risk scores are green-lighted.`;
-        }
-        return `Hello! I am your Smart Insurance & Risk Underwriter agent. I assess natural hazard risk profiles (wildfire, storm, flood) using ATTOM, audit insurance coverage compliance, and track furnished contents limits.`;
-
-      case 'smart-home-controller':
-        if (lowerMsg.includes('lock') || lowerMsg.includes('pin') || lowerMsg.includes('code') || lowerMsg.includes('temp') || lowerMsg.includes('iot')) {
-          return `I have processed smart home updates for upcoming MTR stay transitions:
-1. **Oak Terrace, Unit 105**: 
-   - Move-out completed. Revoked access pin code *4829*.
-   - Move-in scheduled for tomorrow. Generated new tenant access pin code *9381* and sent it to the guest.
-2. **Energy Optimization**: Thermostats in vacant units 202 and 209 set to Eco-mode (78°F cooling limit). Saves a projected 15% in vacant utility overhead.
-
-Smart locks and IoT systems are online and sync\'d.`;
-        }
-        return `Hello! I am your Smart Home IoT Controller agent. I coordinate smart lock access codes for month-by-month MTR guests, monitor HVAC eco-limits, and flag offline smart devices.`;
+        return `Hello! I am the Plaid Underwriting & FHA Screening Officer agent. I perform automated income verification via Plaid Payroll, liquid asset checks, DTI liability calculations, and FHA-compliant individual criminal assessments.`;
 
       case 'treasury-agent':
-        if (lowerMsg.includes('commission') || lowerMsg.includes('split') || lowerMsg.includes('disburse') || lowerMsg.includes('payout') || lowerMsg.includes('ach')) {
-          return `I have audited our platform treasury splits for recent MTR stay bookings:
-- **Rent Booking Revenue**: Audited $6,550 in gross rent payments (ACH Only).
-- **Split Applied**: 
-  - Platform Owner Commission (10%): **$655.00** routed to Platform Treasury escrow.
-  - Property Owner/Landlord Share (90%): **$5,895.00** processed for ACH disbursement.
-- **Compliance Status**: Verified USA ACH routing details. No bank transfer holds detected.`;
+        if (lowerMsg.includes('commission') || lowerMsg.includes('split') || lowerMsg.includes('disburse') || lowerMsg.includes('payout') || lowerMsg.includes('ach') || lowerMsg.includes('modern') || lowerMsg.includes('treasury') || lowerMsg.includes('ledger')) {
+          return `### Modern Treasury & Trust Ledger Agent Report
+- **Modern Treasury Payment Rails**:
+  - **Rent Collection (ACH Debit)**: Debited **$2,850.00** from tenant via Plaid processor token into *Residential Rent Collection Clearing Account* (\`ia_clearing_002\`).
+  - **Platform Commission (10%)**: Posted **$285.00** to *AWS Rentals Main Operating Account* (\`ia_operating_001\`).
+  - **Owner Distribution (90%)**: Dispatched **$2,565.00** instant RTP credit to *Apex Residential Holdings LLC* (\`ia_clearing_002\` -> \`cp_owner_apex\`).
+- **Double-Entry Trust Accounting**:
+  - Balanced multi-leg journal transaction (\`ltx_posted_9941\`):
+    - *Debit*: Rent Clearing Cash Account (+2,850.00)
+    - *Credit*: Platform Fee Revenue (-285.00)
+    - *Credit*: Owner Accounts Payable (-2,565.00)
+  - Mathematical Invariance: Total Debits ($2,850.00) == Total Credits ($2,850.00). Invariant verified.
+- **Virtual Accounts**: Auto-reconciled with dedicated Unit 4B virtual inflow account (\`va_unit_4b\`).`;
         }
-        return `Hello! I am your Commission Splitter & Treasury Agent. I automatically split rent bookings, routing exactly 10% platform commissions and 90% owner payouts via Stripe ACH, and verify trust ledger compliance.`;
-
-      case 'inventory-auditor':
-        if (lowerMsg.includes('furniture') || lowerMsg.includes('sofa') || lowerMsg.includes('inventory') || lowerMsg.includes('check') || lowerMsg.includes('damage')) {
-          return `I have reviewed the furnished inventory audits for recent transitions:
-- **Elm Street, Unit 2B (Check-out)**:
-  - Sofa & Bedframe: Verified undamaged.
-  - Smart TV & Kitchen Appliances: Checked functional.
-  - Linens & Towels: Restock required (Turnover Coordinator notified).
-- **Oak Terrace, Unit 105 (Check-out)**:
-  - Drywall scratch detected near dresser. Est. repair claim: **$120.00**.
-  - Deductions have been logged and sent to the Legal Compliance agent to format the tenant security deposit claim.`;
-        }
-        return `Hello! I am your Furnished Inventory Auditor agent. I verify sofas, beds, appliances, and kitchen items in monthly check-in/out logs, detect damages, and calculate deposit deductions.`;
+        return `Hello! I am your Modern Treasury & Trust Ledger Agent. I orchestrate Plaid Signal pre-debit risk scoring, Modern Treasury ACH debits, instant RTP owner distributions, virtual accounts reconciliation, and balanced double-entry trust ledgers.`;
 
       case 'ach-monitor':
-        if (lowerMsg.includes('plaid') || lowerMsg.includes('ach') || lowerMsg.includes('clearing') || lowerMsg.includes('failed') || lowerMsg.includes('nsf')) {
-          return `I have completed bank verification and ACH settlement checks:
-- **Plaid Instant Verification**: 98% of tenant accounts connected. 1 pending manual micro-deposit verification for Unit 302 (notified).
-- **ACH Settlement Log**:
-  - Magnolia Holdings ($5,895.00 disbursement): Cleared (USA standard 3-day cycle).
-  - Sarah Chen ($2,850.00 rent payment): Processing (Settles tomorrow via ACH).
-  - No NSF (Non-Sufficient Funds) failures detected in the past 30 days.`;
+        if (lowerMsg.includes('plaid') || lowerMsg.includes('ach') || lowerMsg.includes('clearing') || lowerMsg.includes('failed') || lowerMsg.includes('nsf') || lowerMsg.includes('return') || lowerMsg.includes('nacha')) {
+          return `### Plaid Balance & NACHA Return Monitor (Bedrock AI)
+- **Plaid Real-Time Balance (Pre-Debit NSF Protection)**:
+  - Account *...0000*: Real-time available balance is **$9,240.50**. Rent debit of $2,850.00 cleared for processing.
+- **Plaid Signal Scoring**:
+  - Bank-Initiated Return Risk Score: **8 / 99** (Tier 1 - Extremely Low Risk).
+  - Customer-Initiated Return Risk Score: **8 / 99** (Tier 1 - Negligible Fraud Risk).
+  - AI Recommendation: **ACCEPT WITHOUT HOLDS**.
+- **NACHA Return Exception Tracker**:
+  - Active NACHA Returns: 0 pending. All recent transfers cleared without R01 (NSF) or R02 (Account Closed) exceptions.`;
         }
-        return `Hello! I am your ACH Settlement & Plaid Monitor agent. I audit Plaid connections, monitor USA standard ACH clearing cycles, and manage bank account verifications for ACH-only transactions.`;
+        return `Hello! I am your Plaid Balance & NACHA Return Monitor agent. I audit real-time Plaid pre-debit balances, calculate Plaid Signal return risk scores, and monitor Modern Treasury payment rails for NACHA return exceptions.`;
 
       default:
         return `Hello! I am a specialized Property Management AI agent. I am ready to assist you. Please ask me any question about your property portfolio.`;

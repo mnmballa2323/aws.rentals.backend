@@ -7,6 +7,8 @@ import financialRoutes from './financial.routes';
 import operationsRoutes from './operations.routes';
 import attomRoutes from './attom.routes';
 import agentsRoutes from './agents.routes';
+import plaidRoutes from './plaid.routes';
+import modernTreasuryRoutes from './modernTreasury.routes';
 
 const router = Router();
 
@@ -23,5 +25,7 @@ router.use('/financial', financialRoutes);
 router.use('/operations', operationsRoutes);
 router.use('/attom', attomRoutes);
 router.use('/agents', agentsRoutes);
+router.use('/plaid', plaidRoutes);
+router.use('/modern-treasury', modernTreasuryRoutes);
 
 export default router;

@@ -58,6 +58,15 @@ export const config = {
     clientId: process.env['PLAID_CLIENT_ID'] ?? '',
     secret: process.env['PLAID_SECRET'] ?? '',
     env: process.env['PLAID_ENV'] ?? 'sandbox',
+    webhookUrl: process.env['PLAID_WEBHOOK_URL'] ?? 'https://api.rentalhome.ai/api/v1/plaid/webhook',
+  },
+
+  /** Modern Treasury */
+  modernTreasury: {
+    apiKey: process.env['MODERN_TREASURY_API_KEY'] ?? '',
+    organizationId: process.env['MODERN_TREASURY_ORGANIZATION_ID'] ?? '',
+    webhookSecret: process.env['MODERN_TREASURY_WEBHOOK_SECRET'] ?? '',
+    baseUrl: process.env['MODERN_TREASURY_BASE_URL'] ?? 'https://app.moderntreasury.com/api',
   },
 
   /** Twilio */
