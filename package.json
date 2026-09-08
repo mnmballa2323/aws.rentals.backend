@@ -12,6 +12,12 @@
     "prisma:migrate:prod": "npx prisma migrate deploy",
     "prisma:studio": "npx prisma studio",
     "typecheck": "tsc --noEmit",
+    "daemon:all": "tsx src/daemons/orchestrator.ts",
+    "daemon:plaid": "tsx src/daemons/plaid.daemon.ts",
+    "daemon:aws": "tsx src/daemons/aws.daemon.ts",
+    "daemon:moderntreasury": "tsx src/daemons/modern-treasury.daemon.ts",
+    "daemon:attom": "tsx src/daemons/attom.daemon.ts",
+    "daemon:mapbox": "tsx src/daemons/mapbox.daemon.ts",
     "clean": "rm -rf dist",
     "test": "echo \"Running backend tests...\" && exit 0"
   },
