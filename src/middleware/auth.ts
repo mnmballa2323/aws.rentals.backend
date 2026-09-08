@@ -52,7 +52,7 @@ export async function authenticate(
         role = 'TENANT';
         email = 'tenant@aws.rentals';
         uid = 'tenant-us-east-1-001';
-      } else if (token.includes('landlord') || token.includes('manager') || req.headers.referer?.includes('3002')) {
+      } else if (token.includes('landlord') || token.includes('manager') || req.headers.referer?.includes('3005') || req.headers.referer?.includes('3002')) {
         role = 'MANAGER';
         email = 'manager@aws.rentals';
         uid = 'manager-us-east-1-001';
