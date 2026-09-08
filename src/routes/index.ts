@@ -9,6 +9,7 @@ import attomRoutes from './attom.routes';
 import agentsRoutes from './agents.routes';
 import plaidRoutes from './plaid.routes';
 import modernTreasuryRoutes from './modernTreasury.routes';
+import mapboxRoutes from './mapbox.routes';
 
 const router = Router();
 
@@ -27,5 +28,6 @@ router.use('/attom', attomRoutes);
 router.use('/agents', agentsRoutes);
 router.use('/plaid', plaidRoutes);
 router.use('/modern-treasury', modernTreasuryRoutes);
+router.use('/mapbox', mapboxRoutes);
 
 export default router;
