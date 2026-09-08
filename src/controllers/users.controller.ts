@@ -14,7 +14,7 @@ const prisma = new PrismaClient();
 export class UsersController {
   /**
    * POST /api/v1/users
-   * Create or sync a user record from Firebase Auth.
+   * Create or sync a user record from AWS Cognito.
    */
   async create(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -22,7 +22,7 @@ export class UsersController {
 
       const user = await prisma.user.create({
         data: {
-          firebaseUid: input.firebaseUid,
+          cognitoSub: input.cognitoSub,
           email: input.email,
           firstName: input.firstName,
           lastName: input.lastName,
@@ -93,7 +93,7 @@ export class UsersController {
       let user = null;
       try {
         user = await prisma.user.findUnique({
-          where: { firebaseUid: req.user.uid },
+          where: { cognitoSub: req.user.uid },
           include: {
             company: { select: { id: true, name: true, slug: true } },
           },
@@ -102,7 +102,7 @@ export class UsersController {
         logger.warn('Failed to query user profile from database, using mock fallback', err);
         user = {
           id: req.user.uid === 'mock-tenant-uid' ? 'mock-tenant-id' : req.user.uid === 'mock-manager-uid' ? 'mock-manager-id' : req.user.uid === 'mock-owner-uid' ? 'mock-owner-id' : 'mock-admin-id',
-          firebaseUid: req.user.uid,
+          cognitoSub: req.user.uid,
           email: req.user.email || 'user@example.com',
           firstName: req.user.role === 'TENANT' ? 'John' : req.user.role === 'MANAGER' ? 'Sarah' : req.user.role === 'OWNER' ? 'Michael' : 'Platform',
           lastName: req.user.role === 'TENANT' ? 'Tenant' : req.user.role === 'MANAGER' ? 'Landlord' : req.user.role === 'OWNER' ? 'Owner' : 'Admin',
@@ -142,7 +142,7 @@ export class UsersController {
       let notifications: any[] = [];
       try {
         const user = await prisma.user.findUnique({
-          where: { firebaseUid: req.user.uid }
+          where: { cognitoSub: req.user.uid }
         });
         if (user) {
           notifications = await prisma.notification.findMany({
@@ -192,7 +192,7 @@ export class UsersController {
       }
 
       const user = await prisma.user.findUnique({
-        where: { firebaseUid: req.user.uid }
+        where: { cognitoSub: req.user.uid }
       });
 
       if (!user) {

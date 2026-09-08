@@ -1,20 +1,33 @@
 import { Request, Response, NextFunction } from 'express';
-import { getAuth } from '../config/firebase';
+import { CognitoJwtVerifier } from 'aws-jwt-verify';
+import { config } from '../config';
 import { UnauthorizedError } from '../utils/errors';
 import { logger } from '../utils/logger';
 
 /** Extends Express Request with authenticated user info */
 export interface AuthenticatedRequest extends Request {
   user?: {
+    sub: string;
     uid: string;
     email?: string;
     role?: string;
   };
 }
 
+// Initialize AWS Cognito JWT Verifier if configured
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let cognitoVerifier: any = null;
+if (config.aws.cognitoUserPoolId && config.aws.cognitoClientId) {
+  cognitoVerifier = CognitoJwtVerifier.create({
+    userPoolId: config.aws.cognitoUserPoolId,
+    tokenUse: 'id',
+    clientId: config.aws.cognitoClientId,
+  });
+}
+
 /**
- * Middleware that verifies Firebase ID tokens from the Authorization header.
- * Attaches decoded token info to req.user.
+ * Middleware that verifies AWS Cognito ID tokens from the Authorization header.
+ * Attaches decoded user info (sub, email, role) to req.user.
  *
  * Usage: router.get('/protected', authenticate, handler)
  */
@@ -26,34 +39,34 @@ export async function authenticate(
   try {
     const authHeader = req.headers.authorization;
 
-    // Sandbox/Development bypass
-    if (process.env.NODE_ENV !== 'production' || !req.app.get('firebase-initialized')) {
+    // Development / Sandbox bypass when Cognito is not configured
+    if (process.env['NODE_ENV'] !== 'production' || !req.app.get('cognito-configured') || !cognitoVerifier) {
       const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : '';
-      
-      let role = 'GENERAL';
-      let email = 'user@example.com';
-      let uid = 'mock-user-uid';
 
-      // Detect role from mock token or referer port
+      let role = 'GENERAL';
+      let email = 'user@aws.rentals';
+      let uid = 'mock-aws-user-id';
+
+      // Detect role from token or referrer header port
       if (token.includes('tenant') || req.headers.referer?.includes('3001')) {
         role = 'TENANT';
-        email = 'tenant@example.com';
-        uid = 'mock-tenant-uid';
+        email = 'tenant@aws.rentals';
+        uid = 'tenant-us-east-1-001';
       } else if (token.includes('landlord') || token.includes('manager') || req.headers.referer?.includes('3002')) {
         role = 'MANAGER';
-        email = 'manager@example.com';
-        uid = 'mock-manager-uid';
+        email = 'manager@aws.rentals';
+        uid = 'manager-us-east-1-001';
       } else if (token.includes('owner') || req.headers.referer?.includes('3003')) {
         role = 'OWNER';
-        email = 'owner@example.com';
-        uid = 'mock-owner-uid';
+        email = 'owner@aws.rentals';
+        uid = 'owner-us-east-1-001';
       } else if (token.includes('admin') || req.headers.referer?.includes('3004')) {
         role = 'ADMIN';
-        email = 'admin@example.com';
-        uid = 'mock-admin-uid';
+        email = 'admin@aws.rentals';
+        uid = 'admin-us-east-1-001';
       }
 
-      req.user = { uid, email, role };
+      req.user = { sub: uid, uid, email, role };
       next();
       return;
     }
@@ -68,12 +81,13 @@ export async function authenticate(
       throw new UnauthorizedError('Empty bearer token');
     }
 
-    const decodedToken = await getAuth().verifyIdToken(idToken);
+    const payload = await cognitoVerifier.verify(idToken);
 
     req.user = {
-      uid: decodedToken.uid,
-      email: decodedToken.email,
-      role: (decodedToken['role'] as string | undefined) ?? undefined,
+      sub: payload.sub,
+      uid: payload.sub,
+      email: payload.email as string | undefined,
+      role: (payload['custom:role'] as string | undefined) ?? (payload['role'] as string | undefined) ?? 'TENANT',
     };
 
     next();
@@ -82,8 +96,8 @@ export async function authenticate(
       next(error);
       return;
     }
-    logger.warn('Token verification failed', { error });
-    next(new UnauthorizedError('Invalid or expired token'));
+    logger.warn('AWS Cognito token verification failed', { error });
+    next(new UnauthorizedError('Invalid or expired AWS Cognito token'));
   }
 }
 

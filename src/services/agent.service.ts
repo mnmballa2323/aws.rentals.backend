@@ -1,5 +1,6 @@
 import { PrismaClient, WorkOrderCategory, WorkOrderPriority, WorkOrderStatus } from '@prisma/client';
 import { logger } from '../utils/logger';
+import { bedrockService } from './bedrock.service';
 
 const prisma = new PrismaClient();
 
@@ -20,7 +21,7 @@ export class AgentService {
         id: 'leasing-agent',
         name: 'Leasing Agent',
         emoji: '🤝',
-        model: 'Gemini 3.5 Flash',
+        model: 'Claude 3.5 Sonnet (Amazon Bedrock)',
         status: 'online',
         autonomy: 80,
         description: 'Handles inquiries, qualifies prospects, schedules showings, processes applications',
@@ -29,7 +30,7 @@ export class AgentService {
         id: 'maintenance-coordinator',
         name: 'Maintenance Coordinator',
         emoji: '🔧',
-        model: 'Gemini 3.5 Flash + Vision',
+        model: 'Amazon Nova Pro + Vision (Bedrock)',
         status: 'online',
         autonomy: 90,
         description: 'Triages requests, diagnoses issues via photos, dispatches vendors',
@@ -38,7 +39,7 @@ export class AgentService {
         id: 'financial-controller',
         name: 'Financial Controller',
         emoji: '💰',
-        model: 'Gemini 3.5 Flash',
+        model: 'Claude 3.5 Sonnet (Amazon Bedrock)',
         status: 'online',
         autonomy: 70,
         description: 'Processes rent, applies late fees, trust accounting, owner distributions',
@@ -47,7 +48,7 @@ export class AgentService {
         id: 'legal-compliance',
         name: 'Legal Compliance',
         emoji: '⚖️',
-        model: 'Gemini 3.5 Flash + RAG',
+        model: 'Claude 3.5 Sonnet (Amazon Bedrock)',
         status: 'online',
         autonomy: 0,
         description: 'Monitors law changes, ensures compliance, generates notices',
@@ -56,7 +57,7 @@ export class AgentService {
         id: 'tenant-relations',
         name: 'Tenant Relations',
         emoji: '💬',
-        model: 'Gemini 3.5 Flash',
+        model: 'Claude 3 Haiku (Amazon Bedrock)',
         status: 'online',
         autonomy: 85,
         description: 'Handles complaints, mediates disputes, manages communications',
@@ -65,7 +66,7 @@ export class AgentService {
         id: 'market-analyst',
         name: 'Market Analyst',
         emoji: '📊',
-        model: 'Gemini 3.5 Flash + BigQuery',
+        model: 'Amazon Nova Pro (Bedrock)',
         status: 'online',
         autonomy: 100,
         description: 'Monitors market, recommends pricing, identifies acquisition opportunities',
@@ -74,7 +75,7 @@ export class AgentService {
         id: 'vendor-manager',
         name: 'Vendor Manager',
         emoji: '🏗️',
-        model: 'Gemini 3.5 Flash',
+        model: 'Claude 3.5 Sonnet (Amazon Bedrock)',
         status: 'online',
         autonomy: 75,
         description: 'Sources vendors, negotiates rates, manages work orders, tracks COI',
@@ -83,7 +84,7 @@ export class AgentService {
         id: 'property-inspector',
         name: 'Property Inspector',
         emoji: '🔍',
-        model: 'Gemini 3.5 Flash Vision',
+        model: 'Amazon Nova Pro + Vision (Bedrock)',
         status: 'online',
         autonomy: 100,
         description: 'Analyzes inspection photos, identifies defects, generates reports',
@@ -92,7 +93,7 @@ export class AgentService {
         id: 'utility-auditor',
         name: 'Utility Auditor',
         emoji: '⚡',
-        model: 'Gemini 3.5 Flash',
+        model: 'Claude 3 Haiku (Amazon Bedrock)',
         status: 'online',
         autonomy: 95,
         description: 'Monitors smart-meter consumption, checks utility caps, and issues billing updates',
@@ -101,7 +102,7 @@ export class AgentService {
         id: 'turnover-coordinator',
         name: 'Turnover Coordinator',
         emoji: '🧹',
-        model: 'Gemini 3.5 Flash',
+        model: 'Claude 3.5 Sonnet (Amazon Bedrock)',
         status: 'online',
         autonomy: 90,
         description: 'Schedules cleaning dispatches, audits check-out condition logs, and orders furnished restocking',
@@ -110,7 +111,7 @@ export class AgentService {
         id: 'pricing-engine',
         name: 'Dynamic Pricing Engine',
         emoji: '📈',
-        model: 'Gemini 3.5 Flash',
+        model: 'Amazon Nova Pro (Bedrock)',
         status: 'online',
         autonomy: 100,
         description: 'Monitors occupancy, compares market rates, and updates month-by-month premiums',
@@ -119,7 +120,7 @@ export class AgentService {
         id: 'screening-officer',
         name: 'FHA Screening Officer',
         emoji: '📋',
-        model: 'Gemini 3.5 Flash + RAG',
+        model: 'Claude 3.5 Sonnet (Amazon Bedrock)',
         status: 'online',
         autonomy: 90,
         description: 'Conducts FHA-compliant individual criminal assessments and processes screening requests',
@@ -128,7 +129,7 @@ export class AgentService {
         id: 'tax-auditor',
         name: 'Tax & Depreciation Auditor',
         emoji: '📉',
-        model: 'Gemini 3.5 Flash',
+        model: 'Claude 3.5 Sonnet (Amazon Bedrock)',
         status: 'online',
         autonomy: 80,
         description: 'Tracks furniture depreciation logs, monitors ATTOM assessments, and audits Schedule E readiness',
@@ -137,7 +138,7 @@ export class AgentService {
         id: 'risk-underwriter',
         name: 'Smart Insurance & Risk Underwriter',
         emoji: '🛡️',
-        model: 'Gemini 3.5 Flash + ATTOM',
+        model: 'Amazon Nova Pro + ATTOM (Bedrock)',
         status: 'online',
         autonomy: 85,
         description: 'Underwrites natural hazards risk using ATTOM and audits renter compliance',
@@ -146,7 +147,7 @@ export class AgentService {
         id: 'smart-home-controller',
         name: 'Smart Home IoT Controller',
         emoji: '🏠',
-        model: 'Gemini 3.5 Flash',
+        model: 'Claude 3 Haiku (Amazon Bedrock)',
         status: 'online',
         autonomy: 95,
         description: 'Coordinates smart lock pin changes for month-by-month stays and monitors energy optimization',
@@ -155,7 +156,7 @@ export class AgentService {
         id: 'treasury-agent',
         name: 'Commission Splitter & Treasury Agent',
         emoji: '🏦',
-        model: 'Gemini 3.5 Flash',
+        model: 'Claude 3.5 Sonnet (Amazon Bedrock)',
         status: 'online',
         autonomy: 100,
         description: 'Automatically processes Stripe ACH split payments, routing 10% platform commissions and 90% owner disbursements',
@@ -164,7 +165,7 @@ export class AgentService {
         id: 'inventory-auditor',
         name: 'Furnished Inventory Auditor',
         emoji: '🛋️',
-        model: 'Gemini 3.5 Flash + Vision',
+        model: 'Amazon Nova Pro + Vision (Bedrock)',
         status: 'online',
         autonomy: 90,
         description: 'Audits furniture check-in/out logs for monthly MTR bookings and calculates damage claims',
@@ -173,7 +174,7 @@ export class AgentService {
         id: 'ach-monitor',
         name: 'ACH Settlement & Plaid Monitor',
         emoji: '💳',
-        model: 'Gemini 3.5 Flash',
+        model: 'Claude 3 Haiku (Amazon Bedrock)',
         status: 'online',
         autonomy: 95,
         description: 'Monitors Plaid instant authentication status and tracks USA standard ACH transaction cycles',
@@ -322,13 +323,10 @@ export class AgentService {
   }
 
   /**
-   * Run agent dispatcher using Gemini and programmatically trigger DB actions
+   * Run agent dispatcher using Amazon Bedrock and programmatically trigger DB actions
    */
   async dispatch(userId: string, companyId: string, agentId: string, message: string): Promise<any> {
-    const key = process.env.GEMINI_API_KEY;
-    const hasKey = !!key;
-
-    logger.info(`Agent agentId=${agentId} dispatched by userId=${userId} with msg: "${message}" (Gemini API key available: ${hasKey})`);
+    logger.info(`Agent agentId=${agentId} dispatched by userId=${userId} with msg: "${message}" (Powered by Amazon Bedrock)`);
 
     // Step 1: Collect Context based on agent role
     let domainContext = '';
@@ -463,28 +461,25 @@ export class AgentService {
     let actionResult = null;
     if (dbActionRequired === 'MAINTENANCE_TRIAGE' && (message.toLowerCase().includes('leak') || message.toLowerCase().includes('broken') || message.toLowerCase().includes('fix') || message.toLowerCase().includes('repair'))) {
       let parsedTriage = null;
-      if (hasKey) {
-        try {
-          // Run a fast intent parse call with Gemini
-          const triageInstruction = `
-            You are the Maintenance Intent Parser. Parse the maintenance request below.
-            Respond strictly with a JSON object. Do not include markdown code block formatting or backticks.
-            Fields:
-            - category: PLUMBING, ELECTRICAL, HVAC, APPLIANCE, STRUCTURAL, COSMETIC, PEST_CONTROL, LANDSCAPING, CLEANING, SAFETY, GENERAL, OTHER
-            - priority: EMERGENCY, HIGH, MEDIUM, LOW
-            - title: Short description (e.g. "Kitchen sink leak")
-            - description: Long details
-            - propertyId: The matching property ID from this list: ${domainContext} (or first property ID if unclear)
-            - unitId: The unit ID if mentioned, or null.
-          `;
-          const triageResponse = await this.callGeminiRaw(triageInstruction, message);
-          logger.info(`Gemini Triaged request response: ${triageResponse}`);
-          parsedTriage = JSON.parse(triageResponse.trim().replace(/^```json/, '').replace(/```$/, ''));
-        } catch (err) {
-          logger.error('Failed to parse maintenance triage using Gemini, falling back to rule-based parser', err);
-          parsedTriage = this.mockTriageMaintenance(message, domainContext);
-        }
-      } else {
+      try {
+        const triageInstruction = `
+          You are the Autonomous Maintenance Intent Parser powered by Amazon Bedrock. Parse the maintenance request below.
+          Respond strictly with a JSON object. Do not include markdown code block formatting or backticks.
+          Fields:
+          - category: PLUMBING, ELECTRICAL, HVAC, APPLIANCE, STRUCTURAL, COSMETIC, PEST_CONTROL, LANDSCAPING, CLEANING, SAFETY, GENERAL, OTHER
+          - priority: EMERGENCY, HIGH, MEDIUM, LOW
+          - title: Short description (e.g. "Kitchen sink leak")
+          - description: Long details
+          - propertyId: The matching property ID from this list: ${domainContext} (or first property ID if unclear)
+          - unitId: The unit ID if mentioned, or null.
+        `;
+        parsedTriage = await bedrockService.invokeJson(message, {
+          systemPrompt: triageInstruction,
+          modelId: 'anthropic.claude-3-5-sonnet-20241022-v2:0',
+        });
+        logger.info(`Amazon Bedrock triaged request response`, parsedTriage);
+      } catch (err) {
+        logger.error('Failed to parse maintenance triage using Bedrock, falling back to rule-based parser', err);
         parsedTriage = this.mockTriageMaintenance(message, domainContext);
       }
 
@@ -539,35 +534,34 @@ export class AgentService {
       }
     }
 
-    // Step 3: Run Gemini to generate response, or fall back to high-fidelity mock
+    // Step 3: Run Amazon Bedrock to generate response, or fall back to high-fidelity mock
     const agentObj = this.getAgentsList().find((a) => a.id === agentId);
     let reply = '';
 
-    if (hasKey) {
-      try {
-        const systemInstruction = `
-          You are the "${agentObj?.name ?? 'Property Management'}" AI Agent.
-          Role description: ${agentObj?.description}
-          Model details: ${agentObj?.model}
-          Autonomy Level: ${agentObj?.autonomy}%
+    try {
+      const systemInstruction = `
+        You are the "${agentObj?.name ?? 'Property Management'}" Autonomous AI Agent powered by Amazon Bedrock.
+        Role description: ${agentObj?.description}
+        Model details: ${agentObj?.model}
+        Autonomy Level: ${agentObj?.autonomy}%
 
-          Use the following context from the database if relevant to help answer the user's inquiry:
-          ${domainContext}
+        Use the following context from the database if relevant to help answer the user's inquiry:
+        ${domainContext}
 
-          ${
-            actionResult
-              ? `NOTE: You have successfully executed a database action: ${JSON.stringify(actionResult)}. Highlight this in your response.`
-              : ''
-          }
+        ${
+          actionResult
+            ? `NOTE: You have successfully executed a database action: ${JSON.stringify(actionResult)}. Highlight this in your response.`
+            : ''
+        }
 
-          Provide a professional, concise response that matches your persona. If database action was taken, explain it clearly.
-        `;
-        reply = await this.callGeminiRaw(systemInstruction, message);
-      } catch (err) {
-        logger.warn(`Gemini generation failed for agentId=${agentId}, using high-fidelity mock fallback`, err);
-        reply = this.generateMockReply(agentId, message, actionResult);
-      }
-    } else {
+        Provide a professional, concise response that matches your persona under US residential real estate standards. If database action was taken, explain it clearly.
+      `;
+      reply = await bedrockService.invokeModel(message, {
+        systemPrompt: systemInstruction,
+        modelId: 'anthropic.claude-3-5-sonnet-20241022-v2:0',
+      });
+    } catch (err) {
+      logger.warn(`Bedrock generation failed for agentId=${agentId}, using high-fidelity mock fallback`, err);
       reply = this.generateMockReply(agentId, message, actionResult);
     }
 
@@ -905,33 +899,6 @@ Smart locks and IoT systems are online and sync\'d.`;
       default:
         return `Hello! I am a specialized Property Management AI agent. I am ready to assist you. Please ask me any question about your property portfolio.`;
     }
-  }
-
-  private async callGeminiRaw(systemInstruction: string, prompt: string): Promise<string> {
-    const key = process.env.GEMINI_API_KEY;
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${key}`;
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: 'user',
-            parts: [{ text: `${systemInstruction}\n\nUser request:\n${prompt}` }],
-          },
-        ],
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      logger.error('Gemini request failed', { errorText });
-      throw new Error('Gemini API call failed');
-    }
-
-    const result = await response.json() as any;
-    return result.candidates?.[0]?.content?.parts?.[0]?.text ?? 'No response generated.';
   }
 }
 

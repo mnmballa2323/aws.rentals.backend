@@ -22,7 +22,7 @@ export class AgentsController {
       let companyId = 'mock-company-id';
       try {
         const user = await prisma.user.findUnique({
-          where: { firebaseUid: req.user.uid }
+          where: { cognitoSub: req.user.uid }
         });
         if (user) {
           companyId = user.companyId || 'mock-company-id';
@@ -57,7 +57,7 @@ export class AgentsController {
       let userId = 'mock-user-id';
       try {
         const user = await prisma.user.findUnique({
-          where: { firebaseUid: req.user.uid }
+          where: { cognitoSub: req.user.uid }
         });
         if (user) {
           companyId = user.companyId || 'mock-company-id';

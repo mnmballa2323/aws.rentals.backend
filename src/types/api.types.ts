@@ -79,7 +79,7 @@ export type UpdateUnitInput = z.infer<typeof updateUnitSchema>;
 // ─────────────────────────────────────────────────────────
 
 export const createUserSchema = z.object({
-  firebaseUid: z.string().min(1, 'Firebase UID is required'),
+  cognitoSub: z.string().min(1, 'Cognito Sub is required'),
   email: z.string().email('Invalid email address'),
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
@@ -93,7 +93,7 @@ export const createUserSchema = z.object({
 export type CreateUserInput = z.infer<typeof createUserSchema>;
 
 export const updateUserSchema = createUserSchema.partial().omit({
-  firebaseUid: true,
+  cognitoSub: true,
 });
 
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;

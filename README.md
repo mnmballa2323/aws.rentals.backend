@@ -10,11 +10,11 @@
 ## Overview
 
 The AWS Rentals Backend is the central service coordinating all property management operations, including:
-- **8 Autonomous Gemini AI Agents** (Leasing, Maintenance, Financial, Legal Compliance, Tenant Relations, Market Analyst, Vendor Coordinator, Property Inspector)
+- **18 Autonomous Amazon Bedrock AI Agents** (Claude 3.5 Sonnet & Amazon Nova for Leasing, Maintenance, Financial, Legal Compliance, Tenant Relations, Market Analyst, Vendor Coordinator, Property Inspector)
 - **Financial Services** (Stripe ACH/Card payments, Plaid bank linking, trust accounting, depreciation)
-- **Leasing & Applications** (Fair Housing compliance, adverse action notices, screening via Checkr)
-- **Property & Operations Data** (ATTOM Data integration, maintenance workflows, inspections)
-- **Multi-Portal Access Control** (RBAC for Tenants, Property Managers, Owners, and Admins)
+- **Leasing & Applications** (50-State statutory real estate compliance, Fair Housing Act, FCRA-compliant screening, Amazon SES adverse notices)
+- **Property & Operations Data** (ATTOM Data integration, maintenance workflows, inspections, Amazon S3 documents)
+- **Multi-Portal Access Control** (AWS Cognito RBAC for Tenants, Property Managers, Owners, and Admins)
 
 ---
 
@@ -22,7 +22,7 @@ The AWS Rentals Backend is the central service coordinating all property managem
 
 ### Prerequisites
 - Node.js 20+
-- PostgreSQL 15+ (or Docker Compose)
+- PostgreSQL 15+ (Amazon RDS / Aurora or Docker Compose)
 
 ### 1. Environment Setup
 ```bash
@@ -35,7 +35,10 @@ Key environment variables:
 | `PORT` | API Server Port | `3000` |
 | `DATABASE_URL` | PostgreSQL connection URL | `postgresql://postgres:postgres@localhost:5432/rental_home?schema=public` |
 | `CORS_ORIGINS` | Permitted origins | Portals on `:3000`, `:3001`, `:3002`, `:3003`, `:3004` |
-| `GEMINI_API_KEY` | Google Gemini API key | Optional in mock dev mode |
+| `AWS_REGION` | AWS Cloud Region | `us-east-1` |
+| `AWS_ACCESS_KEY_ID` | AWS IAM Access Key | Optional in mock dev mode |
+| `AWS_SECRET_ACCESS_KEY` | AWS IAM Secret Key | Optional in mock dev mode |
+| `BEDROCK_MODEL_ID` | Bedrock Model ID | `anthropic.claude-3-5-sonnet-20241022-v2:0` |
 
 ### 2. Install & Generate Database Client
 ```bash

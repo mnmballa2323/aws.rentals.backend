@@ -16,7 +16,7 @@ import { sendSuccess, sendError } from './utils/response';
 export function createApp(): express.Application {
   const app = express();
 
-  app.set('firebase-initialized', !!config.firebase.projectId);
+  app.set('cognito-configured', !!config.aws.cognitoUserPoolId);
 
   // ─── Security ────────────────────────────────────────
   app.use(helmet());
@@ -50,22 +50,23 @@ export function createApp(): express.Application {
   // ─── Rate Limiting ───────────────────────────────────
   app.use(rateLimiter(config.rateLimit.windowMs, config.rateLimit.maxRequests));
 
-  // ─── Trust Proxy (Cloud Run) ─────────────────────────
+  // ─── Trust Proxy (AWS ALB / CloudFront) ──────────────
   app.set('trust proxy', true);
 
   // ─── Health Check ────────────────────────────────────
   app.get('/health', (_req, res) => {
     sendSuccess(res, {
       status: 'healthy',
+      cloud: 'AWS',
       timestamp: new Date().toISOString(),
       version: process.env['npm_package_version'] ?? '1.0.0',
       uptime: process.uptime(),
     });
   });
 
-  // ─── Readiness Check (for Cloud Run) ─────────────────
+  // ─── Readiness Check (for AWS ECS / App Runner) ───────
   app.get('/ready', (_req, res) => {
-    sendSuccess(res, { status: 'ready' });
+    sendSuccess(res, { status: 'ready', cloud: 'AWS' });
   });
 
   // ─── API Routes ──────────────────────────────────────

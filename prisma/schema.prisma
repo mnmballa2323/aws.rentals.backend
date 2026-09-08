@@ -172,7 +172,7 @@ enum UserStatus {
 
 model User {
   id          String     @id @default(uuid()) @db.Uuid
-  firebaseUid String     @unique @map("firebase_uid")
+  cognitoSub  String     @unique @map("cognito_sub")
   companyId   String?    @map("company_id") @db.Uuid
   email       String     @unique
   firstName   String     @map("first_name")
@@ -195,7 +195,7 @@ model User {
   leadsAssigned       Lead[]
 
   @@index([companyId])
-  @@index([firebaseUid])
+  @@index([cognitoSub])
   @@index([role])
   @@map("users")
 }

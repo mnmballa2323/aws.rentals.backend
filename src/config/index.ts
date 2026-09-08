@@ -21,10 +21,17 @@ export const config = {
   /** Database */
   databaseUrl: process.env['DATABASE_URL'] ?? 'postgresql://postgres:postgres@localhost:5432/rental_home?schema=public',
 
-  /** Firebase */
-  firebase: {
-    projectId: process.env['FIREBASE_PROJECT_ID'] ?? '',
-    serviceAccountPath: process.env['FIREBASE_SERVICE_ACCOUNT_PATH'],
+  /** AWS Infrastructure Configuration */
+  aws: {
+    region: process.env['AWS_REGION'] ?? 'us-east-1',
+    accessKeyId: process.env['AWS_ACCESS_KEY_ID'],
+    secretAccessKey: process.env['AWS_SECRET_ACCESS_KEY'],
+    cognitoUserPoolId: process.env['COGNITO_USER_POOL_ID'] ?? '',
+    cognitoClientId: process.env['COGNITO_CLIENT_ID'] ?? '',
+    bedrockRegion: process.env['BEDROCK_REGION'] ?? 'us-east-1',
+    bedrockModelId: process.env['BEDROCK_MODEL_ID'] ?? 'anthropic.claude-3-5-sonnet-20241022-v2:0',
+    s3Bucket: process.env['S3_BUCKET_NAME'] ?? 'aws-rentals-documents-vault',
+    sesFromEmail: process.env['SES_FROM_EMAIL'] ?? 'notices@rentals.aws.internal',
   },
 
   /** ATTOM Data API */

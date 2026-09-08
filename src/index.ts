@@ -1,19 +1,17 @@
 import { config } from './config';
 import { createApp } from './app';
-import { initializeFirebase } from './config/firebase';
 import { logger } from './utils/logger';
 
 /**
  * Application entry point.
- * Initializes services and starts the Express server.
+ * Initializes AWS services and starts the Express server.
  */
 async function main(): Promise<void> {
   try {
-    // Initialize Firebase Admin SDK
-    if (config.firebase.projectId) {
-      initializeFirebase();
+    if (config.aws.cognitoUserPoolId) {
+      logger.info(`AWS Cognito Auth configured for User Pool: ${config.aws.cognitoUserPoolId}`);
     } else {
-      logger.warn('Firebase project ID not set — auth middleware will fail');
+      logger.info('AWS Cognito User Pool not set — running with local development mock auth');
     }
 
     // Create Express app
@@ -21,7 +19,8 @@ async function main(): Promise<void> {
 
     // Start server
     const server = app.listen(config.port, () => {
-      logger.info(`🏠 Rental Home API server running on port ${config.port}`);
+      logger.info(`🏠 AWS Rentals API Server running on port ${config.port} (AWS Infrastructure)`);
+      logger.info(`   AWS Region: ${config.aws.region}`);
       logger.info(`   Environment: ${config.nodeEnv}`);
       logger.info(`   Health check: http://localhost:${config.port}/health`);
       logger.info(`   API base: http://localhost:${config.port}/api/v1`);
