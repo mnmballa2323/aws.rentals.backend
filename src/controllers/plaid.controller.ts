@@ -3,15 +3,13 @@ import { plaidService } from '../services/plaid.service';
 import { sendSuccess } from '../utils/response';
 
 export class PlaidController {
-  /**
-   * POST /api/v1/plaid/link-token
-   * Create Link Token for frontend Plaid Link modal
-   */
+  // ─── Link & Tokens ──────────────────────────────────────────
+
   async createLinkToken(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = (req.body.userId as string) || 'tenant-usr-demo';
       const clientName = (req.body.clientName as string) || 'AWS Rentals';
-      const products = (req.body.products as string[]) || ['auth', 'transactions', 'identity', 'assets'];
+      const products = (req.body.products as string[]) || ['auth', 'transactions', 'identity', 'assets', 'liabilities'];
 
       const result = await plaidService.createLinkToken(userId, clientName, products);
       sendSuccess(res, result, 200, { message: 'Plaid link token generated' });
@@ -20,10 +18,16 @@ export class PlaidController {
     }
   }
 
-  /**
-   * POST /api/v1/plaid/exchange-public-token
-   * Exchange public_token for access_token and item_id
-   */
+  async getLinkToken(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const linkToken = (req.query.linkToken as string) || 'link-sandbox-demo';
+      const result = await plaidService.getLinkToken(linkToken);
+      sendSuccess(res, result, 200, { message: 'Plaid link token retrieved' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async exchangePublicToken(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { publicToken } = req.body;
@@ -34,10 +38,18 @@ export class PlaidController {
     }
   }
 
-  /**
-   * GET /api/v1/plaid/item
-   * Fetch connected Item status and health
-   */
+  async invalidateAccessToken(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const accessToken = (req.body.accessToken as string) || 'access-sandbox-mock';
+      const result = await plaidService.invalidateAccessToken(accessToken);
+      sendSuccess(res, result, 200, { message: 'Plaid access token rotated' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ─── Item & Accounts ────────────────────────────────────────
+
   async getItem(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const accessToken = (req.query.accessToken as string) || 'access-sandbox-mock';
@@ -48,10 +60,6 @@ export class PlaidController {
     }
   }
 
-  /**
-   * DELETE /api/v1/plaid/item
-   * Disconnect and remove Plaid item
-   */
   async removeItem(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const accessToken = (req.body.accessToken as string) || (req.query.accessToken as string) || 'access-sandbox-mock';
@@ -62,10 +70,16 @@ export class PlaidController {
     }
   }
 
-  /**
-   * GET /api/v1/plaid/auth
-   * Fetch bank account and ACH routing numbers
-   */
+  async getAccounts(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const accessToken = (req.query.accessToken as string) || 'access-sandbox-mock';
+      const accounts = await plaidService.getAccounts(accessToken);
+      sendSuccess(res, accounts, 200, { message: 'Plaid accounts retrieved' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const accessToken = (req.query.accessToken as string) || 'access-sandbox-mock';
@@ -76,10 +90,6 @@ export class PlaidController {
     }
   }
 
-  /**
-   * GET /api/v1/plaid/balance
-   * Real-time balance check for pre-debit NSF validation
-   */
   async getBalance(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const accessToken = (req.query.accessToken as string) || 'access-sandbox-mock';
@@ -91,10 +101,8 @@ export class PlaidController {
     }
   }
 
-  /**
-   * GET /api/v1/plaid/identity
-   * Legal names, addresses, and KYC identity verification
-   */
+  // ─── Identity & Match Verification ──────────────────────────
+
   async getIdentity(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const accessToken = (req.query.accessToken as string) || 'access-sandbox-mock';
@@ -105,10 +113,24 @@ export class PlaidController {
     }
   }
 
-  /**
-   * POST /api/v1/plaid/transactions/sync
-   * Incremental banking ledger sync
-   */
+  async matchIdentity(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const accessToken = (req.body.accessToken as string) || 'access-sandbox-mock';
+      const { legalName, phoneNumber, email, address } = req.body;
+      const match = await plaidService.matchIdentity(accessToken, {
+        legalName: legalName || 'Michael Meram',
+        phoneNumber,
+        email,
+        address,
+      });
+      sendSuccess(res, match, 200, { message: 'Identity KYC matching scores calculated' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ─── Transactions & Recurring Streams ───────────────────────
+
   async syncTransactions(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const accessToken = (req.body.accessToken as string) || 'access-sandbox-mock';
@@ -122,10 +144,18 @@ export class PlaidController {
     }
   }
 
-  /**
-   * POST /api/v1/plaid/signal/evaluate
-   * Predictive ACH return risk and fraud scoring
-   */
+  async getRecurringTransactions(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const accessToken = (req.query.accessToken as string) || 'access-sandbox-mock';
+      const recurring = await plaidService.getRecurringTransactions(accessToken);
+      sendSuccess(res, recurring, 200, { message: 'Recurring payroll and rent streams extracted' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ─── Plaid Signal (ML Return & Fraud Risk) ───────────────────
+
   async evaluateSignal(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const accessToken = (req.body.accessToken as string) || 'access-sandbox-mock';
@@ -140,10 +170,22 @@ export class PlaidController {
     }
   }
 
-  /**
-   * POST /api/v1/plaid/assets/create
-   * Generate underwriting asset report
-   */
+  async reportSignalDecision(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { clientTransactionId, decision, outcome } = req.body;
+      const result = await plaidService.reportSignalDecision(
+        clientTransactionId || 'sig_tx_001',
+        decision || 'APPROVE',
+        outcome,
+      );
+      sendSuccess(res, result, 200, { message: 'Signal decision outcome reported to Plaid ML' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ─── Asset Reports ──────────────────────────────────────────
+
   async createAssetReport(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const accessTokens = (req.body.accessTokens as string[]) || ['access-sandbox-mock'];
@@ -156,10 +198,6 @@ export class PlaidController {
     }
   }
 
-  /**
-   * GET /api/v1/plaid/assets/report
-   * Fetch generated asset report
-   */
   async getAssetReport(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const token = (req.query.assetReportToken as string) || 'assets-sandbox-mock';
@@ -170,10 +208,39 @@ export class PlaidController {
     }
   }
 
-  /**
-   * GET /api/v1/plaid/income
-   * Payroll income verification (W-2s, 1099s, paystubs)
-   */
+  async refreshAssetReport(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const token = (req.body.assetReportToken as string) || 'assets-sandbox-mock';
+      const daysRequested = req.body.daysRequested ? Number(req.body.daysRequested) : 90;
+      const refreshed = await plaidService.refreshAssetReport(token, daysRequested);
+      sendSuccess(res, refreshed, 200, { message: 'Asset report refreshed' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getAssetReportPdf(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const token = (req.query.assetReportToken as string) || 'assets-sandbox-mock';
+      const pdf = await plaidService.getAssetReportPdf(token);
+      sendSuccess(res, pdf, 200, { message: 'Asset report PDF prepared' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async createRelayToken(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { assetReportToken, secondaryClientId } = req.body;
+      const relay = await plaidService.createRelayToken(assetReportToken, secondaryClientId);
+      sendSuccess(res, relay, 200, { message: 'Asset report relay token created' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ─── Payroll Income, Risk Signals & Liabilities ─────────────
+
   async getPayrollIncome(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const accessToken = (req.query.accessToken as string) || 'access-sandbox-mock';
@@ -184,10 +251,16 @@ export class PlaidController {
     }
   }
 
-  /**
-   * GET /api/v1/plaid/liabilities
-   * Debt obligations and liabilities for DTI
-   */
+  async getIncomeRiskSignals(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const accessToken = (req.query.accessToken as string) || 'access-sandbox-mock';
+      const signals = await plaidService.getIncomeRiskSignals(accessToken);
+      sendSuccess(res, signals, 200, { message: 'Income tampering risk signals evaluated' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getLiabilities(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const accessToken = (req.query.accessToken as string) || 'access-sandbox-mock';
@@ -198,10 +271,34 @@ export class PlaidController {
     }
   }
 
-  /**
-   * POST /api/v1/plaid/processor-token
-   * Create Modern Treasury processor token
-   */
+  // ─── OFAC / AML Watchlist Screening ─────────────────────────
+
+  async createWatchlistScreening(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { name, dateOfBirth, document, address } = req.body;
+      const screening = await plaidService.createWatchlistScreening({
+        name: name || 'Michael Meram',
+        dateOfBirth,
+        document,
+        address,
+      });
+      sendSuccess(res, screening, 201, { message: 'Watchlist AML screening executed' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getWatchlistScreening(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const screening = await plaidService.getWatchlistScreening(req.params.id as string);
+      sendSuccess(res, screening, 200, { message: 'Watchlist screening report retrieved' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ─── Modern Treasury Processor Bridge ───────────────────────
+
   async createProcessorToken(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const accessToken = (req.body.accessToken as string) || 'access-sandbox-mock';
@@ -215,9 +312,8 @@ export class PlaidController {
     }
   }
 
-  /**
-   * POST /api/v1/plaid/webhook
-   */
+  // ─── Webhooks ───────────────────────────────────────────────
+
   async handleWebhook(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await plaidService.handleWebhook(req.body);

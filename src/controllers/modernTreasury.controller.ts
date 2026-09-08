@@ -23,7 +23,16 @@ export class ModernTreasuryController {
     }
   }
 
-  // ─── Counterparties ────────────────────────────────────────
+  async getBalanceReports(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const report = await modernTreasuryService.getBalanceReports(req.params.id as string);
+      sendSuccess(res, report, 200, { message: 'Internal account balance report generated' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ─── Counterparties & Onboarding ───────────────────────────
 
   async listCounterparties(_req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -47,6 +56,15 @@ export class ModernTreasuryController {
         accountType,
       });
       sendSuccess(res, counterparty, 201, { message: 'Counterparty created successfully' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async collectAccount(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const link = await modernTreasuryService.collectAccount(req.params.id as string);
+      sendSuccess(res, link, 200, { message: 'Hosted onboarding link generated' });
     } catch (error) {
       next(error);
     }
@@ -127,7 +145,26 @@ export class ModernTreasuryController {
     }
   }
 
-  // ─── Expected Payments ─────────────────────────────────────
+  async reversePaymentOrder(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const reason = req.body.reason as string | undefined;
+      const result = await modernTreasuryService.reversePaymentOrder(req.params.id as string, reason);
+      sendSuccess(res, result, 200, { message: 'Payment order reversed' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async stopPaymentOrder(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await modernTreasuryService.stopPaymentOrder(req.params.id as string);
+      sendSuccess(res, result, 200, { message: 'Payment order stopped' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ─── Expected Payments & Auto-Reconciliation ───────────────
 
   async listExpectedPayments(_req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -150,6 +187,19 @@ export class ModernTreasuryController {
         description: description || 'Expected lease payment',
       });
       sendSuccess(res, expectedPayment, 201, { message: 'Expected payment registered for auto-reconciliation' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async reconcileExpectedPayment(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { transactionId } = req.body;
+      const result = await modernTreasuryService.reconcileExpectedPayment(
+        req.params.id as string,
+        transactionId || 'tx_jpmc_001',
+      );
+      sendSuccess(res, result, 200, { message: 'Expected payment reconciled with clearing transaction' });
     } catch (error) {
       next(error);
     }
@@ -181,7 +231,16 @@ export class ModernTreasuryController {
     }
   }
 
-  // ─── Double-Entry Ledgers ──────────────────────────────────
+  async deactivateVirtualAccount(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await modernTreasuryService.deactivateVirtualAccount(req.params.id as string);
+      sendSuccess(res, result, 200, { message: 'Virtual account closed' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ─── Double-Entry Ledgers & Chart of Accounts ──────────────
 
   async getLedger(_req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -192,13 +251,49 @@ export class ModernTreasuryController {
     }
   }
 
+  async listLedgerAccountCategories(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const ledgerId = (req.query.ledgerId as string) || 'led_master_01';
+      const categories = await modernTreasuryService.listLedgerAccountCategories(ledgerId);
+      sendSuccess(res, categories, 200, { message: 'Chart of accounts categories retrieved' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async createLedgerAccountCategory(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { ledgerId, name, normalBalance, hierarchyType } = req.body;
+      const category = await modernTreasuryService.createLedgerAccountCategory(
+        ledgerId || 'led_master_01',
+        name,
+        normalBalance || 'debit',
+        hierarchyType || 'ASSETS',
+      );
+      sendSuccess(res, category, 201, { message: 'Ledger account category created' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async listLedgerAccounts(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const ledgerId = (req.query.ledgerId as string) || 'led_master_01';
+      const accounts = await modernTreasuryService.listLedgerAccounts(ledgerId);
+      sendSuccess(res, accounts, 200, { message: 'Ledger accounts retrieved' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async createLedgerAccount(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { ledgerId, name, normalBalance } = req.body;
+      const { ledgerId, name, normalBalance, categoryId } = req.body;
       const account = await modernTreasuryService.createLedgerAccount(
         ledgerId || 'led_master_01',
         name,
         normalBalance || 'credit',
+        categoryId,
       );
       sendSuccess(res, account, 201, { message: 'Ledger account created' });
     } catch (error) {
@@ -221,12 +316,57 @@ export class ModernTreasuryController {
     }
   }
 
-  // ─── Returns ───────────────────────────────────────────────
+  // ─── Clearing Transactions & Invoices ──────────────────────
+
+  async listTransactions(_req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const transactions = await modernTreasuryService.listTransactions();
+      sendSuccess(res, transactions, 200, { message: 'Clearing bank transactions retrieved' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async listInvoices(_req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const invoices = await modernTreasuryService.listInvoices();
+      sendSuccess(res, invoices, 200, { message: 'Modern Treasury invoices retrieved' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async createInvoice(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { counterpartyId, dueDate, lineItems } = req.body;
+      const invoice = await modernTreasuryService.createInvoice({
+        counterpartyId: counterpartyId || 'cp_tenant_4b',
+        dueDate: dueDate || new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0]!,
+        lineItems: lineItems || [{ amountCents: 285000, description: 'Monthly Rent' }],
+      });
+      sendSuccess(res, invoice, 201, { message: 'Modern Treasury invoice created' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ─── Returns & Exception Management ─────────────────────────
 
   async listReturns(_req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const returns = await modernTreasuryService.listReturns();
       sendSuccess(res, returns, 200, { message: 'Modern Treasury NACHA returns retrieved' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ─── Connections & Rails Status ─────────────────────────────
+
+  async getConnectionsStatus(_req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const status = await modernTreasuryService.getConnectionsStatus();
+      sendSuccess(res, status, 200, { message: 'Payment rails connection status retrieved' });
     } catch (error) {
       next(error);
     }
