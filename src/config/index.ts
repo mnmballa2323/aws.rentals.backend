@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 /** Validates that an env var exists and returns its value */
-function requireEnv(key: string): string {
+export function requireEnv(key: string): string {
   const value = process.env[key];
   if (!value) {
     throw new Error(`Missing required environment variable: ${key}`);

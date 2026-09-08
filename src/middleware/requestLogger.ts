@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import { logger } from '../utils/logger';
 
 /**
@@ -11,7 +11,7 @@ export function requestLogger(
   res: Response,
   next: NextFunction,
 ): void {
-  const requestId = (req.headers['x-request-id'] as string | undefined) ?? uuidv4();
+  const requestId = (req.headers['x-request-id'] as string | undefined) ?? randomUUID();
   const startTime = Date.now();
 
   // Attach request ID to response headers
