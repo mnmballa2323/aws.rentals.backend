@@ -1,0 +1,1008 @@
+// ─────────────────────────────────────────────────────────
+// Rental Home — Prisma Schema
+// ─────────────────────────────────────────────────────────
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ═══════════════════════════════════════════════════════════
+// CORE
+// ═══════════════════════════════════════════════════════════
+
+model Company {
+  id               String   @id @default(uuid()) @db.Uuid
+  name             String
+  slug             String   @unique
+  settings         Json     @default("{}")
+  subscriptionTier String   @default("free") @map("subscription_tier")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  properties         Property[]
+  users              User[]
+  transactions       Transaction[]
+  invoices           Invoice[]
+  ownerDistributions OwnerDistribution[]
+  trustAccounts      TrustAccount[]
+  vendors            Vendor[]
+
+  @@map("companies")
+}
+
+enum PropertyType {
+  SINGLE_FAMILY
+  MULTI_FAMILY
+  CONDO
+  TOWNHOUSE
+  DUPLEX
+  TRIPLEX
+  FOURPLEX
+  APARTMENT
+  COMMERCIAL
+  MIXED_USE
+  LAND
+  OTHER
+}
+
+enum PropertyStatus {
+  ACTIVE
+  INACTIVE
+  PENDING
+  SOLD
+  ARCHIVED
+}
+
+model Property {
+  id               String         @id @default(uuid()) @db.Uuid
+  companyId        String         @map("company_id") @db.Uuid
+  attomId          String?        @map("attom_id")
+  addressLine1     String         @map("address_line1")
+  addressLine2     String?        @map("address_line2")
+  city             String
+  state            String
+  zip              String
+  county           String?
+  country          String         @default("US")
+  latitude         Decimal?       @db.Decimal(10, 7)
+  longitude        Decimal?       @db.Decimal(10, 7)
+  fips             String?
+  apn              String?
+  propertyType     PropertyType   @default(SINGLE_FAMILY) @map("property_type")
+  beds             Int?
+  baths            Decimal?       @db.Decimal(3, 1)
+  sqft             Int?
+  lotSize          Int?           @map("lot_size")
+  yearBuilt        Int?           @map("year_built")
+  zoning           String?
+  constructionType String?        @map("construction_type")
+  roofType         String?        @map("roof_type")
+  heatingCooling   String?        @map("heating_cooling")
+  parking          String?
+  pool             Boolean        @default(false)
+  legalDescription String?        @map("legal_description")
+  status           PropertyStatus @default(ACTIVE)
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  company              Company                @relation(fields: [companyId], references: [id])
+  units                Unit[]
+  leads                Lead[]
+  leases               Lease[]
+  transactions         Transaction[]
+  workOrders           WorkOrder[]
+  inspections          Inspection[]
+  ownerDistributions   OwnerDistribution[]
+  trustLedgerEntries   TrustLedgerEntry[]
+  disclosureRecords    DisclosureRecord[]
+  attomPropertyData    AttomPropertyData[]
+  attomValuations      AttomValuation[]
+  attomRentalAvms      AttomRentalAvm[]
+  attomAssessments     AttomAssessment[]
+  attomSaleHistories   AttomSaleHistory[]
+  attomHazardProfiles  AttomHazardProfile[]
+  attomSchoolData      AttomSchoolData[]
+  attomNeighborhoodData AttomNeighborhoodData[]
+  attomBuildingPermits AttomBuildingPermit[]
+  messages             Message[]              @relation("PropertyMessages")
+
+  @@index([companyId])
+  @@index([attomId])
+  @@index([status])
+  @@map("properties")
+}
+
+enum UnitStatus {
+  VACANT
+  OCCUPIED
+  MAINTENANCE
+  RENOVATION
+  RESERVED
+}
+
+model Unit {
+  id          String     @id @default(uuid()) @db.Uuid
+  propertyId  String     @map("property_id") @db.Uuid
+  unitNumber  String     @map("unit_number")
+  beds        Int?
+  baths       Decimal?   @db.Decimal(3, 1)
+  sqft        Int?
+  floor       Int?
+  status      UnitStatus @default(VACANT)
+  marketRent  Decimal?   @db.Decimal(10, 2) @map("market_rent")
+  currentRent Decimal?   @db.Decimal(10, 2) @map("current_rent")
+  amenities   Json       @default("[]")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  property     Property      @relation(fields: [propertyId], references: [id])
+  leads        Lead[]
+  applications Application[]
+  leases       Lease[]
+  transactions Transaction[]
+  workOrders   WorkOrder[]
+  inspections  Inspection[]
+
+  @@unique([propertyId, unitNumber])
+  @@index([propertyId])
+  @@index([status])
+  @@map("units")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  COMPANY_ADMIN
+  PROPERTY_MANAGER
+  MAINTENANCE
+  OWNER
+  TENANT
+  PROSPECT
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  INVITED
+  SUSPENDED
+}
+
+model User {
+  id          String     @id @default(uuid()) @db.Uuid
+  firebaseUid String     @unique @map("firebase_uid")
+  companyId   String?    @map("company_id") @db.Uuid
+  email       String     @unique
+  firstName   String     @map("first_name")
+  lastName    String     @map("last_name")
+  phone       String?
+  role        UserRole   @default(PROSPECT)
+  status      UserStatus @default(ACTIVE)
+  avatarUrl   String?    @map("avatar_url")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  company             Company?            @relation(fields: [companyId], references: [id])
+  payments            Payment[]
+  workOrdersReported  WorkOrder[]         @relation("ReportedWorkOrders")
+  inspections         Inspection[]
+  notifications       Notification[]
+  messagesSent        Message[]           @relation("SentMessages")
+  messagesReceived    Message[]           @relation("ReceivedMessages")
+  ownerDistributions  OwnerDistribution[]
+  leadsAssigned       Lead[]
+
+  @@index([companyId])
+  @@index([firebaseUid])
+  @@index([role])
+  @@map("users")
+}
+
+// ═══════════════════════════════════════════════════════════
+// ATTOM DATA CACHE
+// ═══════════════════════════════════════════════════════════
+
+model AttomPropertyData {
+  id         String   @id @default(uuid()) @db.Uuid
+  propertyId String   @map("property_id") @db.Uuid
+  attomId    String   @map("attom_id")
+  rawData    Json     @map("raw_data")
+  fetchedAt  DateTime @default(now()) @map("fetched_at")
+
+  property Property @relation(fields: [propertyId], references: [id])
+
+  @@index([propertyId])
+  @@index([attomId])
+  @@map("attom_property_data")
+}
+
+model AttomValuation {
+  id              String   @id @default(uuid()) @db.Uuid
+  propertyId      String   @map("property_id") @db.Uuid
+  avmValue        Decimal  @db.Decimal(12, 2) @map("avm_value")
+  avmHigh         Decimal? @db.Decimal(12, 2) @map("avm_high")
+  avmLow          Decimal? @db.Decimal(12, 2) @map("avm_low")
+  confidenceScore Decimal? @db.Decimal(5, 2) @map("confidence_score")
+  valueChangePct  Decimal? @db.Decimal(6, 2) @map("value_change_pct")
+  fetchedAt       DateTime @default(now()) @map("fetched_at")
+
+  property Property @relation(fields: [propertyId], references: [id])
+
+  @@index([propertyId])
+  @@map("attom_valuations")
+}
+
+model AttomRentalAvm {
+  id           String   @id @default(uuid()) @db.Uuid
+  propertyId   String   @map("property_id") @db.Uuid
+  rentEstimate Decimal  @db.Decimal(10, 2) @map("rent_estimate")
+  rentHigh     Decimal? @db.Decimal(10, 2) @map("rent_high")
+  rentLow      Decimal? @db.Decimal(10, 2) @map("rent_low")
+  fetchedAt    DateTime @default(now()) @map("fetched_at")
+
+  property Property @relation(fields: [propertyId], references: [id])
+
+  @@index([propertyId])
+  @@map("attom_rental_avms")
+}
+
+model AttomAssessment {
+  id               String   @id @default(uuid()) @db.Uuid
+  propertyId       String   @map("property_id") @db.Uuid
+  assessedValue    Decimal? @db.Decimal(12, 2) @map("assessed_value")
+  landValue        Decimal? @db.Decimal(12, 2) @map("land_value")
+  improvementValue Decimal? @db.Decimal(12, 2) @map("improvement_value")
+  taxAmount        Decimal? @db.Decimal(10, 2) @map("tax_amount")
+  taxYear          Int?     @map("tax_year")
+  fetchedAt        DateTime @default(now()) @map("fetched_at")
+
+  property Property @relation(fields: [propertyId], references: [id])
+
+  @@index([propertyId])
+  @@map("attom_assessments")
+}
+
+model AttomSaleHistory {
+  id        String    @id @default(uuid()) @db.Uuid
+  propertyId String   @map("property_id") @db.Uuid
+  saleDate  DateTime? @map("sale_date")
+  salePrice Decimal?  @db.Decimal(12, 2) @map("sale_price")
+  buyer     String?
+  seller    String?
+  deedType  String?   @map("deed_type")
+  fetchedAt DateTime  @default(now()) @map("fetched_at")
+
+  property Property @relation(fields: [propertyId], references: [id])
+
+  @@index([propertyId])
+  @@map("attom_sale_histories")
+}
+
+model AttomHazardProfile {
+  id             String   @id @default(uuid()) @db.Uuid
+  propertyId     String   @map("property_id") @db.Uuid
+  floodRisk      String?  @map("flood_risk")
+  wildfireRisk   String?  @map("wildfire_risk")
+  earthquakeRisk String?  @map("earthquake_risk")
+  droughtRisk    String?  @map("drought_risk")
+  stormRisk      String?  @map("storm_risk")
+  heatRisk       String?  @map("heat_risk")
+  tornadoRisk    String?  @map("tornado_risk")
+  hailRisk       String?  @map("hail_risk")
+  windRisk       String?  @map("wind_risk")
+  radonRisk      String?  @map("radon_risk")
+  fetchedAt      DateTime @default(now()) @map("fetched_at")
+
+  property Property @relation(fields: [propertyId], references: [id])
+
+  @@index([propertyId])
+  @@map("attom_hazard_profiles")
+}
+
+model AttomSchoolData {
+  id         String   @id @default(uuid()) @db.Uuid
+  propertyId String   @map("property_id") @db.Uuid
+  schools    Json
+  fetchedAt  DateTime @default(now()) @map("fetched_at")
+
+  property Property @relation(fields: [propertyId], references: [id])
+
+  @@index([propertyId])
+  @@map("attom_school_data")
+}
+
+model AttomNeighborhoodData {
+  id           String   @id @default(uuid()) @db.Uuid
+  propertyId   String   @map("property_id") @db.Uuid
+  demographics Json?
+  crime        Json?
+  poi          Json?
+  fetchedAt    DateTime @default(now()) @map("fetched_at")
+
+  property Property @relation(fields: [propertyId], references: [id])
+
+  @@index([propertyId])
+  @@map("attom_neighborhood_data")
+}
+
+model AttomBuildingPermit {
+  id         String   @id @default(uuid()) @db.Uuid
+  propertyId String   @map("property_id") @db.Uuid
+  permits    Json
+  fetchedAt  DateTime @default(now()) @map("fetched_at")
+
+  property Property @relation(fields: [propertyId], references: [id])
+
+  @@index([propertyId])
+  @@map("attom_building_permits")
+}
+
+// ═══════════════════════════════════════════════════════════
+// LEASING
+// ═══════════════════════════════════════════════════════════
+
+enum LeadSource {
+  WEBSITE
+  ZILLOW
+  APARTMENTS_COM
+  REALTOR_COM
+  REFERRAL
+  WALK_IN
+  PHONE
+  SOCIAL_MEDIA
+  OTHER
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  SHOWING_SCHEDULED
+  SHOWING_COMPLETED
+  APPLICATION_SENT
+  APPLIED
+  APPROVED
+  DENIED
+  LEASED
+  LOST
+}
+
+model Lead {
+  id            String     @id @default(uuid()) @db.Uuid
+  propertyId    String     @map("property_id") @db.Uuid
+  unitId        String?    @map("unit_id") @db.Uuid
+  source        LeadSource @default(WEBSITE)
+  firstName     String     @map("first_name")
+  lastName      String     @map("last_name")
+  email         String?
+  phone         String?
+  desiredMoveIn DateTime?  @map("desired_move_in")
+  status        LeadStatus @default(NEW)
+  score         Int?
+  assignedTo    String?    @map("assigned_to") @db.Uuid
+  notes         String?    @db.Text
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  property     Property      @relation(fields: [propertyId], references: [id])
+  unit         Unit?         @relation(fields: [unitId], references: [id])
+  assignedUser User?         @relation(fields: [assignedTo], references: [id])
+  applications Application[]
+
+  @@index([propertyId])
+  @@index([status])
+  @@map("leads")
+}
+
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED
+  SCREENING
+  APPROVED
+  CONDITIONALLY_APPROVED
+  DENIED
+  WITHDRAWN
+  EXPIRED
+}
+
+model Application {
+  id                 String            @id @default(uuid()) @db.Uuid
+  leadId             String            @map("lead_id") @db.Uuid
+  unitId             String            @map("unit_id") @db.Uuid
+  applicantUserId    String?           @map("applicant_user_id") @db.Uuid
+  status             ApplicationStatus @default(DRAFT)
+  monthlyIncome      Decimal?          @db.Decimal(10, 2) @map("monthly_income")
+  employment         String?
+  desiredLeaseTerm   Int?              @map("desired_lease_term")
+  applicationFeePaid Boolean           @default(false) @map("application_fee_paid")
+  submittedAt        DateTime?         @map("submitted_at")
+  decidedAt          DateTime?         @map("decided_at")
+
+  lead                 Lead                  @relation(fields: [leadId], references: [id])
+  unit                 Unit                  @relation(fields: [unitId], references: [id])
+  screeningResults     ScreeningResult[]
+  adverseActionNotices AdverseActionNotice[]
+
+  @@index([leadId])
+  @@index([unitId])
+  @@index([status])
+  @@map("applications")
+}
+
+enum ScreeningRecommendation {
+  APPROVE
+  CONDITIONAL_APPROVE
+  DENY
+  MANUAL_REVIEW
+}
+
+model ScreeningResult {
+  id                    String                   @id @default(uuid()) @db.Uuid
+  applicationId         String                   @map("application_id") @db.Uuid
+  provider              String
+  creditScore           Int?                     @map("credit_score")
+  criminalClear         Boolean?                 @map("criminal_clear")
+  evictionClear         Boolean?                 @map("eviction_clear")
+  incomeVerified        Boolean?                 @map("income_verified")
+  overallRecommendation ScreeningRecommendation? @map("overall_recommendation")
+  rawResult             Json?                    @map("raw_result")
+  completedAt           DateTime?                @map("completed_at")
+
+  application Application @relation(fields: [applicationId], references: [id])
+
+  @@index([applicationId])
+  @@map("screening_results")
+}
+
+enum LeaseType {
+  FIXED
+  MONTH_TO_MONTH
+  WEEK_TO_WEEK
+}
+
+enum LeaseStatus {
+  DRAFT
+  PENDING_SIGNATURE
+  ACTIVE
+  EXPIRED
+  TERMINATED
+  RENEWED
+}
+
+model Lease {
+  id              String      @id @default(uuid()) @db.Uuid
+  unitId          String      @map("unit_id") @db.Uuid
+  propertyId      String      @map("property_id") @db.Uuid
+  tenantIds       String[]    @map("tenant_ids") @db.Uuid
+  startDate       DateTime    @map("start_date")
+  endDate         DateTime    @map("end_date")
+  monthlyRent     Decimal     @db.Decimal(10, 2) @map("monthly_rent")
+  securityDeposit Decimal?    @db.Decimal(10, 2) @map("security_deposit")
+  petDeposit      Decimal?    @db.Decimal(10, 2) @map("pet_deposit")
+  leaseType       LeaseType   @default(FIXED) @map("lease_type")
+  status          LeaseStatus @default(DRAFT)
+  documentUrl     String?     @map("document_url")
+  signedAt        DateTime?   @map("signed_at")
+  createdAt       DateTime    @default(now()) @map("created_at")
+
+  unit              Unit              @relation(fields: [unitId], references: [id])
+  property          Property          @relation(fields: [propertyId], references: [id])
+  addendums         LeaseAddendum[]
+  transactions      Transaction[]
+  securityDeposits  SecurityDeposit[]
+  disclosureRecords DisclosureRecord[]
+
+  @@index([unitId])
+  @@index([propertyId])
+  @@index([status])
+  @@map("leases")
+}
+
+model LeaseAddendum {
+  id          String    @id @default(uuid()) @db.Uuid
+  leaseId     String    @map("lease_id") @db.Uuid
+  type        String
+  content     String    @db.Text
+  documentUrl String?   @map("document_url")
+  signedAt    DateTime? @map("signed_at")
+
+  lease Lease @relation(fields: [leaseId], references: [id])
+
+  @@index([leaseId])
+  @@map("lease_addendums")
+}
+
+// ═══════════════════════════════════════════════════════════
+// FINANCIAL
+// ═══════════════════════════════════════════════════════════
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+}
+
+enum TransactionCategory {
+  RENT
+  LATE_FEE
+  SECURITY_DEPOSIT
+  PET_DEPOSIT
+  APPLICATION_FEE
+  MAINTENANCE
+  INSURANCE
+  PROPERTY_TAX
+  MORTGAGE
+  UTILITY
+  MANAGEMENT_FEE
+  OWNER_DISTRIBUTION
+  VENDOR_PAYMENT
+  REFUND
+  OTHER
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  VOIDED
+  REFUNDED
+}
+
+model Transaction {
+  id            String              @id @default(uuid()) @db.Uuid
+  companyId     String              @map("company_id") @db.Uuid
+  propertyId    String?             @map("property_id") @db.Uuid
+  unitId        String?             @map("unit_id") @db.Uuid
+  leaseId       String?             @map("lease_id") @db.Uuid
+  type          TransactionType
+  category      TransactionCategory
+  amount        Decimal             @db.Decimal(10, 2)
+  description   String?
+  date          DateTime            @db.Date
+  status        TransactionStatus   @default(PENDING)
+  paymentMethod String?             @map("payment_method")
+  externalId    String?             @map("external_id")
+  createdAt     DateTime            @default(now()) @map("created_at")
+
+  company  Company   @relation(fields: [companyId], references: [id])
+  property Property? @relation(fields: [propertyId], references: [id])
+  unit     Unit?     @relation(fields: [unitId], references: [id])
+  lease    Lease?    @relation(fields: [leaseId], references: [id])
+  payments Payment[]
+
+  @@index([companyId])
+  @@index([propertyId])
+  @@index([date])
+  @@index([category])
+  @@map("transactions")
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+model Payment {
+  id              String        @id @default(uuid()) @db.Uuid
+  transactionId   String        @map("transaction_id") @db.Uuid
+  tenantUserId    String        @map("tenant_user_id") @db.Uuid
+  amount          Decimal       @db.Decimal(10, 2)
+  method          String
+  stripePaymentId String?       @map("stripe_payment_id")
+  status          PaymentStatus @default(PENDING)
+  paidAt          DateTime?     @map("paid_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  transaction Transaction @relation(fields: [transactionId], references: [id])
+  tenant      User        @relation(fields: [tenantUserId], references: [id])
+
+  @@index([transactionId])
+  @@index([tenantUserId])
+  @@map("payments")
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+model Invoice {
+  id          String        @id @default(uuid()) @db.Uuid
+  companyId   String        @map("company_id") @db.Uuid
+  propertyId  String?       @map("property_id") @db.Uuid
+  vendorId    String?       @map("vendor_id") @db.Uuid
+  amount      Decimal       @db.Decimal(10, 2)
+  dueDate     DateTime      @map("due_date") @db.Date
+  status      InvoiceStatus @default(DRAFT)
+  items       Json          @default("[]")
+  documentUrl String?       @map("document_url")
+  paidAt      DateTime?     @map("paid_at")
+
+  company Company @relation(fields: [companyId], references: [id])
+  vendor  Vendor? @relation(fields: [vendorId], references: [id])
+
+  @@index([companyId])
+  @@index([vendorId])
+  @@index([dueDate])
+  @@map("invoices")
+}
+
+enum DistributionStatus {
+  PENDING
+  DISTRIBUTED
+  FAILED
+}
+
+model OwnerDistribution {
+  id            String             @id @default(uuid()) @db.Uuid
+  companyId     String             @map("company_id") @db.Uuid
+  propertyId    String             @map("property_id") @db.Uuid
+  ownerUserId   String             @map("owner_user_id") @db.Uuid
+  amount        Decimal            @db.Decimal(10, 2)
+  periodStart   DateTime           @map("period_start") @db.Date
+  periodEnd     DateTime           @map("period_end") @db.Date
+  breakdown     Json               @default("{}")
+  status        DistributionStatus @default(PENDING)
+  distributedAt DateTime?          @map("distributed_at")
+
+  company  Company  @relation(fields: [companyId], references: [id])
+  property Property @relation(fields: [propertyId], references: [id])
+  owner    User     @relation(fields: [ownerUserId], references: [id])
+
+  @@index([companyId])
+  @@index([propertyId])
+  @@map("owner_distributions")
+}
+
+enum AccountType {
+  OPERATING
+  SECURITY_DEPOSIT
+  ESCROW
+}
+
+enum AccountStatus {
+  ACTIVE
+  CLOSED
+  FROZEN
+}
+
+model TrustAccount {
+  id                 String        @id @default(uuid()) @db.Uuid
+  companyId          String        @map("company_id") @db.Uuid
+  accountName        String        @map("account_name")
+  accountType        AccountType   @map("account_type")
+  bankName           String?       @map("bank_name")
+  accountNumberLast4 String?       @map("account_number_last4") @db.VarChar(4)
+  balance            Decimal       @default(0) @db.Decimal(12, 2)
+  status             AccountStatus @default(ACTIVE)
+
+  company          Company           @relation(fields: [companyId], references: [id])
+  ledgerEntries    TrustLedgerEntry[]
+  securityDeposits SecurityDeposit[]
+
+  @@index([companyId])
+  @@map("trust_accounts")
+}
+
+enum LedgerEntryType {
+  DEPOSIT
+  WITHDRAWAL
+  INTEREST
+  FEE
+  TRANSFER_IN
+  TRANSFER_OUT
+}
+
+model TrustLedgerEntry {
+  id             String          @id @default(uuid()) @db.Uuid
+  trustAccountId String          @map("trust_account_id") @db.Uuid
+  propertyId     String?         @map("property_id") @db.Uuid
+  entryType      LedgerEntryType @map("entry_type")
+  amount         Decimal         @db.Decimal(10, 2)
+  runningBalance Decimal         @db.Decimal(12, 2) @map("running_balance")
+  description    String?
+  date           DateTime        @db.Date
+
+  trustAccount TrustAccount @relation(fields: [trustAccountId], references: [id])
+  property     Property?    @relation(fields: [propertyId], references: [id])
+
+  @@index([trustAccountId])
+  @@index([date])
+  @@map("trust_ledger_entries")
+}
+
+enum SecurityDepositStatus {
+  HELD
+  PARTIALLY_RETURNED
+  RETURNED
+  FORFEITED
+}
+
+model SecurityDeposit {
+  id                 String                @id @default(uuid()) @db.Uuid
+  leaseId            String                @map("lease_id") @db.Uuid
+  amount             Decimal               @db.Decimal(10, 2)
+  heldInTrustAccountId String?             @map("held_in_trust_account_id") @db.Uuid
+  interestRate       Decimal?              @db.Decimal(5, 4) @map("interest_rate")
+  status             SecurityDepositStatus @default(HELD)
+  returnedAmount     Decimal?              @db.Decimal(10, 2) @map("returned_amount")
+  deductions         Json?
+  returnedAt         DateTime?             @map("returned_at")
+
+  lease        Lease         @relation(fields: [leaseId], references: [id])
+  trustAccount TrustAccount? @relation(fields: [heldInTrustAccountId], references: [id])
+
+  @@index([leaseId])
+  @@map("security_deposits")
+}
+
+// ═══════════════════════════════════════════════════════════
+// OPERATIONS
+// ═══════════════════════════════════════════════════════════
+
+enum WorkOrderCategory {
+  PLUMBING
+  ELECTRICAL
+  HVAC
+  APPLIANCE
+  STRUCTURAL
+  COSMETIC
+  PEST_CONTROL
+  LANDSCAPING
+  CLEANING
+  SAFETY
+  GENERAL
+  OTHER
+}
+
+enum WorkOrderPriority {
+  EMERGENCY
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum WorkOrderStatus {
+  SUBMITTED
+  ACKNOWLEDGED
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+model WorkOrder {
+  id                String            @id @default(uuid()) @db.Uuid
+  propertyId        String            @map("property_id") @db.Uuid
+  unitId            String?           @map("unit_id") @db.Uuid
+  reportedBy        String            @map("reported_by") @db.Uuid
+  assignedToVendor  String?           @map("assigned_to_vendor") @db.Uuid
+  category          WorkOrderCategory @default(GENERAL)
+  priority          WorkOrderPriority @default(MEDIUM)
+  title             String
+  description       String            @db.Text
+  photos            String[]          @default([])
+  status            WorkOrderStatus   @default(SUBMITTED)
+  estimatedCost     Decimal?          @db.Decimal(10, 2) @map("estimated_cost")
+  actualCost        Decimal?          @db.Decimal(10, 2) @map("actual_cost")
+  scheduledDate     DateTime?         @map("scheduled_date")
+  completedAt       DateTime?         @map("completed_at")
+  createdAt         DateTime          @default(now()) @map("created_at")
+
+  property Property @relation(fields: [propertyId], references: [id])
+  unit     Unit?    @relation(fields: [unitId], references: [id])
+  reporter User     @relation("ReportedWorkOrders", fields: [reportedBy], references: [id])
+  vendor   Vendor?  @relation(fields: [assignedToVendor], references: [id])
+
+  @@index([propertyId])
+  @@index([status])
+  @@index([priority])
+  @@map("work_orders")
+}
+
+enum VendorStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING
+}
+
+model Vendor {
+  id              String       @id @default(uuid()) @db.Uuid
+  companyId       String       @map("company_id") @db.Uuid
+  name            String
+  trade           String?
+  email           String?
+  phone           String?
+  address         String?
+  licenseNumber   String?      @map("license_number")
+  insuranceStatus String?      @map("insurance_status")
+  coiExpiry       DateTime?    @map("coi_expiry")
+  rating          Decimal?     @db.Decimal(3, 2)
+  status          VendorStatus @default(ACTIVE)
+  createdAt       DateTime     @default(now()) @map("created_at")
+
+  company    Company      @relation(fields: [companyId], references: [id])
+  cois       VendorCoi[]
+  workOrders WorkOrder[]
+  invoices   Invoice[]
+
+  @@index([companyId])
+  @@map("vendors")
+}
+
+model VendorCoi {
+  id                String    @id @default(uuid()) @db.Uuid
+  vendorId          String    @map("vendor_id") @db.Uuid
+  policyType        String    @map("policy_type")
+  carrier           String?
+  policyNumber      String?   @map("policy_number")
+  coverageAmount    Decimal?  @db.Decimal(12, 2) @map("coverage_amount")
+  effectiveDate     DateTime  @map("effective_date")
+  expiryDate        DateTime  @map("expiry_date")
+  documentUrl       String?   @map("document_url")
+  additionalInsured Boolean   @default(false) @map("additional_insured")
+
+  vendor Vendor @relation(fields: [vendorId], references: [id])
+
+  @@index([vendorId])
+  @@map("vendor_cois")
+}
+
+enum InspectionType {
+  MOVE_IN
+  MOVE_OUT
+  ROUTINE
+  ANNUAL
+  COMPLAINT
+  SAFETY
+}
+
+enum InspectionStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model Inspection {
+  id              String           @id @default(uuid()) @db.Uuid
+  propertyId      String           @map("property_id") @db.Uuid
+  unitId          String?          @map("unit_id") @db.Uuid
+  type            InspectionType
+  inspectorUserId String           @map("inspector_user_id") @db.Uuid
+  scheduledDate   DateTime         @map("scheduled_date")
+  completedDate   DateTime?        @map("completed_date")
+  status          InspectionStatus @default(SCHEDULED)
+  findings        Json?
+  photos          String[]         @default([])
+  reportUrl       String?          @map("report_url")
+
+  property  Property @relation(fields: [propertyId], references: [id])
+  unit      Unit?    @relation(fields: [unitId], references: [id])
+  inspector User     @relation(fields: [inspectorUserId], references: [id])
+
+  @@index([propertyId])
+  @@index([scheduledDate])
+  @@map("inspections")
+}
+
+// ═══════════════════════════════════════════════════════════
+// COMMUNICATION
+// ═══════════════════════════════════════════════════════════
+
+enum MessageChannel {
+  IN_APP
+  EMAIL
+  SMS
+  PUSH
+}
+
+model Message {
+  id             String         @id @default(uuid()) @db.Uuid
+  conversationId String         @map("conversation_id")
+  senderId       String         @map("sender_id") @db.Uuid
+  recipientId    String         @map("recipient_id") @db.Uuid
+  propertyId     String?        @map("property_id") @db.Uuid
+  channel        MessageChannel @default(IN_APP)
+  subject        String?
+  body           String         @db.Text
+  readAt         DateTime?      @map("read_at")
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  sender    User      @relation("SentMessages", fields: [senderId], references: [id])
+  recipient User      @relation("ReceivedMessages", fields: [recipientId], references: [id])
+  property  Property? @relation("PropertyMessages", fields: [propertyId], references: [id])
+
+  @@index([conversationId])
+  @@index([senderId])
+  @@index([recipientId])
+  @@map("messages")
+}
+
+enum NotificationType {
+  PAYMENT_RECEIVED
+  PAYMENT_DUE
+  PAYMENT_OVERDUE
+  LEASE_EXPIRING
+  MAINTENANCE_UPDATE
+  APPLICATION_UPDATE
+  INSPECTION_SCHEDULED
+  DOCUMENT_SIGNED
+  GENERAL
+}
+
+model Notification {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  type      NotificationType @default(GENERAL)
+  title     String
+  body      String
+  data      Json?
+  readAt    DateTime?        @map("read_at")
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([readAt])
+  @@map("notifications")
+}
+
+// ═══════════════════════════════════════════════════════════
+// COMPLIANCE
+// ═══════════════════════════════════════════════════════════
+
+model ComplianceRule {
+  id            String   @id @default(uuid()) @db.Uuid
+  jurisdiction  String
+  category      String
+  ruleKey       String   @map("rule_key")
+  ruleValue     Json     @map("rule_value")
+  effectiveDate DateTime @map("effective_date") @db.Date
+  source        String?
+
+  @@unique([jurisdiction, category, ruleKey])
+  @@index([jurisdiction])
+  @@map("compliance_rules")
+}
+
+model DisclosureRecord {
+  id              String    @id @default(uuid()) @db.Uuid
+  leaseId         String?   @map("lease_id") @db.Uuid
+  propertyId      String    @map("property_id") @db.Uuid
+  disclosureType  String    @map("disclosure_type")
+  required        Boolean   @default(true)
+  signed          Boolean   @default(false)
+  documentUrl     String?   @map("document_url")
+  signedAt        DateTime? @map("signed_at")
+
+  lease    Lease?   @relation(fields: [leaseId], references: [id])
+  property Property @relation(fields: [propertyId], references: [id])
+
+  @@index([propertyId])
+  @@map("disclosure_records")
+}
+
+model AdverseActionNotice {
+  id            String    @id @default(uuid()) @db.Uuid
+  applicationId String    @map("application_id") @db.Uuid
+  noticeType    String    @map("notice_type")
+  reason        String    @db.Text
+  craName       String?   @map("cra_name")
+  craAddress    String?   @map("cra_address")
+  sentAt        DateTime? @map("sent_at")
+  documentUrl   String?   @map("document_url")
+
+  application Application @relation(fields: [applicationId], references: [id])
+
+  @@index([applicationId])
+  @@map("adverse_action_notices")
+}
