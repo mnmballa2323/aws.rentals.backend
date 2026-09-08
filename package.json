@@ -13,6 +13,8 @@
     "prisma:studio": "npx prisma studio",
     "typecheck": "tsc --noEmit",
     "daemon:all": "tsx src/daemons/orchestrator.ts",
+    "daemon:frbo": "tsx src/daemons/frbo-micro-compliance.daemon.ts",
+    "daemon:parcel": "tsx src/daemons/parcel-compliance.daemon.ts",
     "daemon:plaid": "tsx src/daemons/plaid.daemon.ts",
     "daemon:aws": "tsx src/daemons/aws.daemon.ts",
     "daemon:moderntreasury": "tsx src/daemons/modern-treasury.daemon.ts",
